@@ -24,7 +24,7 @@ func newRpcClient(url string, port int) *rpcClient {
 	}
 }
 
-func (c *rpcClient) ClientGetStatus(id string) {
+func (c *rpcClient) ClientGetStatus(id string) *client {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
@@ -36,10 +36,11 @@ func (c *rpcClient) ClientGetStatus(id string) {
 	response, err := c.sendRequest(request)
 	if err != nil {
 		log.Println(err)
-		return
+		return nil
 	}
 
 	log.Printf("Client %s status: %s\n", id, response.Result.Client.Config.Name)
+	return response.Result.Client
 }
 
 func (c *rpcClient) ServerGetStatus() *server {

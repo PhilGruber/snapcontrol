@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -22,7 +23,8 @@ func main() {
 		clientId := os.Args[3]
 		switch command {
 		case "status":
-			client.ClientGetStatus(clientId)
+			cl := client.ClientGetStatus(clientId)
+			fmt.Printf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent)
 		}
 	case "server":
 		switch command {
