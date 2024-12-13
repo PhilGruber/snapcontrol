@@ -43,6 +43,26 @@ func (c *rpcClient) ClientGetStatus(id string) *client {
 	return response.Result.Client
 }
 
+func (c *rpcClient) ClientSetVolume(id string, vol int) {
+	muted := vol == 0
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Client.SetVolume",
+		Params: volumeRequest{
+			Id: id,
+			Volume: volume{
+				Muted:   muted,
+				Percent: vol,
+			},
+		},
+	}
+	_, err := c.sendRequest(request)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func (c *rpcClient) ServerGetStatus() *server {
 	request := request{
 		Id:      1,

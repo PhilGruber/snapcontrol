@@ -42,6 +42,11 @@ type clientConfig struct {
 	Volume   volume `json:"volume"`
 }
 
+type volumeRequest struct {
+	Id     string `json:"id"`
+	Volume volume `json:"volume"`
+}
+
 type volume struct {
 	Muted   bool `json:"muted"`
 	Percent int  `json:"percent"`

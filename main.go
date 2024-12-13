@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -25,6 +26,14 @@ func main() {
 		case "status":
 			cl := client.ClientGetStatus(clientId)
 			fmt.Printf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent)
+		case "volume":
+			volume, _ := strconv.Atoi(os.Args[4])
+			if volume < 0 || volume > 100 {
+				log.Fatal("Volume must be between 0 and 100")
+			}
+			client.ClientSetVolume(clientId, volume)
+		case "latency":
+		case "name":
 		}
 	case "server":
 		switch command {
