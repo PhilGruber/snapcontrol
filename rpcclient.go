@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 )
 
@@ -13,14 +12,16 @@ const (
 )
 
 type rpcClient struct {
-	url  string
-	port int
+	url     string
+	port    int
+	verbose bool
 }
 
-func newRpcClient(url string, port int) *rpcClient {
+func newRpcClient(url string, port int, verbose bool) *rpcClient {
 	return &rpcClient{
-		url:  url,
-		port: port,
+		url:     url,
+		port:    port,
+		verbose: verbose,
 	}
 }
 
@@ -35,16 +36,15 @@ func (c *rpcClient) ClientGetStatus(id string) *client {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return nil
 	}
 
-	log.Printf("Client %s status: %s\n", id, response.Result.Client.Config.Name)
+	c.log(fmt.Sprintf("Client %s status: %s\n", id, response.Result.Client.Config.Name))
 	return response.Result.Client
 }
 
-func (c *rpcClient) ClientSetVolume(id string, vol int) {
-	muted := vol == 0
+func (c *rpcClient) ClientSetVolume(id string, vol int) error {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
@@ -52,15 +52,26 @@ func (c *rpcClient) ClientSetVolume(id string, vol int) {
 		Params: volumeRequest{
 			Id: id,
 			Volume: volume{
-				Muted:   muted,
 				Percent: vol,
 			},
 		},
 	}
 	_, err := c.sendRequest(request)
-	if err != nil {
-		log.Println(err)
+	return err
+}
+
+func (c *rpcClient) ClientSetName(id string, name string) error {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Client.SetName",
+		Params: nameRequest{
+			Id:   id,
+			Name: name,
+		},
 	}
+	_, err := c.sendRequest(request)
+	return err
 }
 
 func (c *rpcClient) ServerGetStatus() *server {
@@ -72,7 +83,7 @@ func (c *rpcClient) ServerGetStatus() *server {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return nil
 	}
 
@@ -80,7 +91,7 @@ func (c *rpcClient) ServerGetStatus() *server {
 }
 
 func (c *rpcClient) sendRequest(request request) (*response, error) {
-	log.Printf("Connecting to %s:%d\n", c.url, c.port)
+	c.log(fmt.Sprintf("Connecting to %s:%d\n", c.url, c.port))
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.url, c.port))
 	if err != nil {
 		panic(err)
@@ -89,7 +100,7 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 
 	data, _ := json.Marshal(request)
 	data = append(data, '\n')
-	log.Printf("Sending request: %s\n", string(data))
+	c.log(fmt.Sprintf("Sending request: %s\n", string(data)))
 	_, err = conn.Write(data)
 	if err != nil {
 		panic(err)
@@ -103,21 +114,25 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 
 	buf = buf[:length]
 
-	fmt.Printf("Response: %s\n", string(buf))
+	c.log(fmt.Sprintf("Response: %s\n", string(buf)))
 
 	var response response
 	err = json.Unmarshal(buf, &response)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return nil, err
 	}
-
-	fmt.Printf("Error: %v\n", response.Error)
 
 	if response.Error != nil {
 		return nil, errors.New(response.Error.Message + ": " + response.Error.Data.(string))
 	}
-	log.Printf("Result: %s\n", response.Result)
-	return &response, nil
 
+	c.log(fmt.Sprintf("Result: %s\n", response.Result))
+	return &response, nil
+}
+
+func (c *rpcClient) log(s string) {
+	if c.verbose {
+		fmt.Println(s)
+	}
 }

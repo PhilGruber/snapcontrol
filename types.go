@@ -47,6 +47,11 @@ type volumeRequest struct {
 	Volume volume `json:"volume"`
 }
 
+type nameRequest struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type volume struct {
 	Muted   bool `json:"muted"`
 	Percent int  `json:"percent"`

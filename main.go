@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -17,7 +16,7 @@ func main() {
 		hostname = os.Getenv("SNAPCONTROL_HOSTNAME")
 	}
 
-	client := newRpcClient(hostname, 1705)
+	client := newRpcClient(hostname, 1705, false)
 
 	switch subsystem {
 	case "client":
@@ -29,20 +28,33 @@ func main() {
 		case "volume":
 			volume, _ := strconv.Atoi(os.Args[4])
 			if volume < 0 || volume > 100 {
-				log.Fatal("Volume must be between 0 and 100")
+				fmt.Println("Volume must be between 0 and 100")
 			}
-			client.ClientSetVolume(clientId, volume)
-		case "latency":
+			err := client.ClientSetVolume(clientId, volume)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Printf("Volume set to %d%%\n", volume)
+			}
 		case "name":
+			name := os.Args[4]
+			err := client.ClientSetName(clientId, name)
+			if err == nil {
+				fmt.Printf("Name set to %s\n", name)
+			} else {
+				fmt.Println(err)
+			}
+		case "latency":
+			/* TODO: Implement */
 		}
 	case "server":
 		switch command {
 		case "status":
 			svr := client.ServerGetStatus()
 			for _, group := range svr.Groups {
-				log.Printf("Group %s: %s\n", group.Id, group.Name)
+				fmt.Printf("Group %s: %s\n", group.Id, group.Name)
 				for _, client := range group.Clients {
-					log.Printf("  Client %s: %s\n", client.Id, client.Config.Name)
+					fmt.Printf("  Client %s: %s\n", client.Id, client.Config.Name)
 				}
 			}
 		}
