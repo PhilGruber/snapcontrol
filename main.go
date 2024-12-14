@@ -23,7 +23,11 @@ func main() {
 		clientId := os.Args[3]
 		switch command {
 		case "status":
-			cl := client.ClientGetStatus(clientId)
+			cl, err := client.ClientGetStatus(clientId)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 			fmt.Printf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent)
 		case "volume":
 			volume, _ := strconv.Atoi(os.Args[4])
@@ -47,16 +51,50 @@ func main() {
 		case "latency":
 			/* TODO: Implement */
 		}
+	case "group":
+		switch command {
+		case "status":
+			/* TODO: Implement */
+		case "mute":
+			/* TODO: Implement */
+		case "clients":
+			/* TODO: Implement */
+		case "name":
+			/* TODO: Implement */
+		}
 	case "server":
 		switch command {
 		case "status":
 			svr := client.ServerGetStatus()
 			for _, group := range svr.Groups {
-				fmt.Printf("Group %s: %s\n", group.Id, group.Name)
+				name := group.Name
+				if name == "" {
+					name = group.Id
+				}
+				fmt.Printf("Group %s\n", name)
 				for _, client := range group.Clients {
-					fmt.Printf("  Client %s: %s\n", client.Id, client.Config.Name)
+					fmt.Printf("\tClient %s: %s (%s)\n", client.Id, client.Config.Name, client.Host.Name)
 				}
 			}
+		case "version":
+			version := client.ServerGetRPCVersion()
+			fmt.Println("Server version: ", version)
+		case "deleteclient":
+			err := client.ServerDeleteClient(os.Args[3])
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Println("Client deleted")
+			}
+		}
+	case "stream":
+		switch command {
+		case "addstream":
+			/* TODO: Implement */
+		case "removestream":
+			/* TODO: Implement */
+		case "control":
+			/* TODO: Implement */
 		}
 	}
 }

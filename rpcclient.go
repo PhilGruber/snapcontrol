@@ -25,23 +25,22 @@ func newRpcClient(url string, port int, verbose bool) *rpcClient {
 	}
 }
 
-func (c *rpcClient) ClientGetStatus(id string) *client {
+func (c *rpcClient) ClientGetStatus(id string) (*client, error) {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Client.GetStatus",
-		Params: clientId{
+		Params: idOnly{
 			Id: id,
 		},
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 
 	c.log(fmt.Sprintf("Client %s status: %s\n", id, response.Result.Client.Config.Name))
-	return response.Result.Client
+	return response.Result.Client, nil
 }
 
 func (c *rpcClient) ClientSetVolume(id string, vol int) error {
@@ -88,6 +87,35 @@ func (c *rpcClient) ServerGetStatus() *server {
 	}
 
 	return response.Result.Server
+}
+
+func (c *rpcClient) ServerGetRPCVersion() string {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Server.GetRPCVersion",
+	}
+	response, err := c.sendRequest(request)
+	fmt.Printf("Response: %v\n", response)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	return fmt.Sprintf("%d.%d.%d", response.Result.Major, response.Result.Minor, response.Result.Patch)
+}
+
+func (c *rpcClient) ServerDeleteClient(id string) error {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Server.DeleteClient",
+		Params: idOnly{
+			Id: id,
+		},
+	}
+	_, err := c.sendRequest(request)
+	return err
 }
 
 func (c *rpcClient) sendRequest(request request) (*response, error) {

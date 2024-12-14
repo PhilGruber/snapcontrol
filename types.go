@@ -14,7 +14,7 @@ type response struct {
 	Error   *rpcError `json:"error"`
 }
 
-type clientId struct {
+type idOnly struct {
 	Id string `json:"id"`
 }
 
@@ -27,12 +27,24 @@ type rpcError struct {
 type result struct {
 	Client *client `json:"client"`
 	Server *server `json:"server"`
+	Minor  int     `json:"minor"`
+	Major  int     `json:"major"`
+	Patch  int     `json:"patch"`
 }
 
 type client struct {
 	Config    clientConfig `json:"config"`
 	Connected bool         `json:"connected"`
 	Id        string       `json:"id"`
+	Host      host         `json:"host"`
+}
+
+type host struct {
+	Arch string `json:"arch"`
+	Ip   string `json:"ip"`
+	Mac  string `json:"mac"`
+	Name string `json:"name"`
+	Os   string `json:"os"`
 }
 
 type clientConfig struct {
