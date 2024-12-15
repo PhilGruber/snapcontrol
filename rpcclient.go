@@ -73,6 +73,20 @@ func (c *rpcClient) ClientSetName(id string, name string) error {
 	return err
 }
 
+func (c *rpcClient) SetClientLatency(id string, latency int) error {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Client.SetLatency",
+		Params: latencyRequest{
+			Id:      id,
+			Latency: latency,
+		},
+	}
+	_, err := c.sendRequest(request)
+	return err
+}
+
 func (c *rpcClient) ServerGetStatus() *server {
 	request := request{
 		Id:      1,

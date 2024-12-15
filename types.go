@@ -64,15 +64,24 @@ type nameRequest struct {
 	Name string `json:"name"`
 }
 
+type latencyRequest struct {
+	Id      string `json:"id"`
+	Latency int    `json:"latency"`
+}
+
 type volume struct {
 	Muted   bool `json:"muted"`
 	Percent int  `json:"percent"`
 }
 
 type server struct {
-	Groups  []group `json:"groups"`
-	Server  any     `json:"server"`
-	Streams []any   `json:"streams"`
+	Groups  []group       `json:"groups"`
+	Server  serverDetails `json:"server"`
+	Streams []stream      `json:"streams"`
+}
+
+type serverDetails struct {
+	Host host `json:"host"`
 }
 
 type group struct {
@@ -81,4 +90,26 @@ type group struct {
 	Muted    bool     `json:"muted"`
 	Name     string   `json:"name"`
 	StreamId string   `json:"stream_id"`
+}
+
+type stream struct {
+	Id     string `json:"id"`
+	Status string `json:"status"`
+	Uri    uri    `json:"uri"`
+}
+
+type uri struct {
+	Fragment string   `json:"fragment"`
+	Host     string   `json:"host"`
+	Path     string   `json:"path"`
+	Raw      string   `json:"raw"`
+	Scheme   string   `json:"scheme"`
+	Query    uriQuery `json:"query"`
+}
+
+type uriQuery struct {
+	ChunkMs      string `json:"chunk_ms"`
+	Codec        string `json:"codec"`
+	Name         string `json:"name"`
+	SampleFormat string `json:"sampleformat"`
 }
