@@ -53,15 +53,27 @@ func main() {
 			printOrError(fmt.Sprintf("Latency set to %d\n", latency), err)
 		}
 	case "group":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: snapcontrol group <command> <id>")
+			return
+		}
+		groupId := os.Args[3]
 		switch command {
 		case "status":
-			/* TODO: Implement */
+			group := client.GroupGetStatus(groupId)
+			fmt.Printf("\t%-36s %-16s %-16s %-9s %-12s\n", "Id", "Name", "Host", "Volume", "Latency")
+			for _, client := range group.Clients {
+				fmt.Printf("\t%-36s %-16s %-16s %5d%% %8dms\n", client.Id, client.Config.Name, client.Host.Name, client.Config.Volume.Percent, client.Config.Latency)
+			}
 		case "mute":
-			/* TODO: Implement */
+			err := client.SetGroupMute(groupId, os.Args[4] == "true")
+			printOrError("Mute set", err)
+		case "streams":
 		case "clients":
 			/* TODO: Implement */
 		case "name":
-			/* TODO: Implement */
+			err := client.SetGroupName(groupId, os.Args[4])
+			printOrError("Name set", err)
 		}
 	case "server":
 		switch command {
@@ -74,12 +86,12 @@ func main() {
 				}
 				fmt.Printf("Group %s\n", name)
 				for _, client := range group.Clients {
-					fmt.Printf("\tClient %s: %s (%s)\n", client.Id, client.Config.Name, client.Host.Name)
+					fmt.Printf("\tClient %-36s %-16s %-16s %5d%% %8dms\n", client.Id, client.Config.Name, client.Host.Name, client.Config.Volume.Percent, client.Config.Latency)
 				}
 				fmt.Println()
-				for _, stream := range svr.Streams {
-					fmt.Printf("Stream %s: %s (%s)\n", stream.Id, stream.Status, stream.Uri.Scheme)
-				}
+			}
+			for _, stream := range svr.Streams {
+				fmt.Printf("Stream %s: %s (%s)\n", stream.Id, stream.Status, stream.Uri.Scheme)
 			}
 		case "version":
 			version := client.ServerGetRPCVersion()

@@ -27,6 +27,7 @@ type rpcError struct {
 type result struct {
 	Client *client `json:"client"`
 	Server *server `json:"server"`
+	Group  *group  `json:"group"`
 	Minor  int     `json:"minor"`
 	Major  int     `json:"major"`
 	Patch  int     `json:"patch"`
@@ -72,6 +73,11 @@ type latencyRequest struct {
 type volume struct {
 	Muted   bool `json:"muted"`
 	Percent int  `json:"percent"`
+}
+
+type muteRequest struct {
+	Id   string `json:"id"`
+	Mute bool   `json:"mute"`
 }
 
 type server struct {

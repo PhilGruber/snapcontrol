@@ -132,6 +132,52 @@ func (c *rpcClient) ServerDeleteClient(id string) error {
 	return err
 }
 
+func (c *rpcClient) GroupGetStatus(id string) *group {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Group.GetStatus",
+		Params: idOnly{
+			Id: id,
+		},
+	}
+	response, err := c.sendRequest(request)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return response.Result.Group
+}
+
+func (c *rpcClient) SetGroupMute(id string, mute bool) error {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Group.SetMute",
+		Params: muteRequest{
+			Id:   id,
+			Mute: mute,
+		},
+	}
+	_, err := c.sendRequest(request)
+	return err
+}
+
+func (c *rpcClient) SetGroupName(id string, name string) error {
+	request := request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Group.SetName",
+		Params: nameRequest{
+			Id:   id,
+			Name: name,
+		},
+	}
+	_, err := c.sendRequest(request)
+	return err
+}
+
 func (c *rpcClient) sendRequest(request request) (*response, error) {
 	c.log(fmt.Sprintf("Connecting to %s:%d\n", c.url, c.port))
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.url, c.port))
