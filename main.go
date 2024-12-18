@@ -84,7 +84,7 @@ func main() {
 				if name == "" {
 					name = group.Id
 				}
-				fmt.Printf("Group %s\n", name)
+				fmt.Printf("Group: %s\n", name)
 				for _, client := range group.Clients {
 					fmt.Printf("\tClient %-36s %-16s %-16s %5d%% %8dms\n", client.Id, client.Config.Name, client.Host.Name, client.Config.Volume.Percent, client.Config.Latency)
 				}
