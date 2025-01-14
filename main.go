@@ -14,13 +14,13 @@ func main() {
 		return
 	}
 
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 {
 		fmt.Println("Usage: snapcontrol <client|group|server|stream> <command> [args]")
+		fmt.Println("Use 'snapcontrol help' for more information")
 		return
 	}
 
 	subsystem := strings.ToLower(os.Args[1])
-	command := strings.ToLower(os.Args[2])
 
 	hostname := "127.0.0.1"
 	if os.Getenv("SNAPCONTROL_HOSTNAME") != "" {
@@ -31,6 +31,11 @@ func main() {
 
 	switch subsystem {
 	case "client":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: snapcontrol client <status|volume|name|latency> <clientId> [<value>]")
+			return
+		}
+		command := strings.ToLower(os.Args[2])
 		clientId := os.Args[3]
 		switch command {
 		case "status":
@@ -51,12 +56,15 @@ func main() {
 			latency, _ := strconv.Atoi(os.Args[4])
 			err := client.SetClientLatency(clientId, latency)
 			printOrError(fmt.Sprintf("Latency set to %d\n", latency), err)
+		default:
+			fmt.Println("Usage: snapcontrol client <status|volume|name|latency> <clientId> [<value>]")
 		}
 	case "group":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: snapcontrol group <command> <id>")
+			fmt.Println("Usage: snapcontrol group <status|mute|streams|clients|name> <groupId>")
 			return
 		}
+		command := strings.ToLower(os.Args[2])
 		groupId := os.Args[3]
 		switch command {
 		case "status":
@@ -74,8 +82,15 @@ func main() {
 		case "name":
 			err := client.SetGroupName(groupId, os.Args[4])
 			printOrError("Name set", err)
+		default:
+			fmt.Println("Usage: snapcontrol group <status|mute|streams|clients|name> <groupId>")
 		}
 	case "server":
+		if len(os.Args) < 2 {
+			fmt.Println("Usage: snapcontrol server <status|version|deleteclient> [args]")
+			return
+		}
+		command := strings.ToLower(os.Args[2])
 		switch command {
 		case "status":
 			svr := client.ServerGetStatus()
@@ -99,8 +114,15 @@ func main() {
 		case "deleteclient":
 			err := client.ServerDeleteClient(os.Args[3])
 			printOrError("Client deleted", err)
+		default:
+			fmt.Println("Usage: snapcontrol server <status|version|deleteclient> [args]")
 		}
 	case "stream":
+		if len(os.Args) < 2 {
+			fmt.Println("Usage: snapcontrol stream <addstream|removestream|control> <streamId>")
+			return
+		}
+		command := strings.ToLower(os.Args[2])
 		switch command {
 		case "addstream":
 			/* TODO: Implement */
@@ -109,6 +131,11 @@ func main() {
 		case "control":
 			/* TODO: Implement */
 		}
+	case "version":
+		fmt.Println("snapcontrol version " + appVersion)
+	default:
+		fmt.Println("Usage: snapcontrol <client|group|server|stream> <command> [args]")
+		fmt.Println("Use 'snapcontrol help' for more information")
 	}
 }
 
