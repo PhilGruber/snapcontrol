@@ -42,11 +42,30 @@ func main() {
 			cl, err := client.ClientGetStatus(clientId)
 			printOrError(fmt.Sprintf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent), err)
 		case "volume":
-			volume, _ := strconv.Atoi(os.Args[4])
-			if volume < 0 || volume > 100 {
+			volumeStr := os.Args[4]
+			relative := volumeStr[0] == '+' || volumeStr[0] == '-'
+			volume, err := strconv.Atoi(volumeStr)
+			if err != nil {
+				fmt.Println("Invalid volume value:", err)
+				return
+			}
+			if !relative && (volume < 0 || volume > 100) {
 				fmt.Println("Volume must be between 0 and 100")
 			}
-			err := client.ClientSetVolume(clientId, volume)
+			if relative {
+				cl, err := client.ClientGetStatus(clientId)
+				if err != nil {
+					fmt.Println("Error getting client status:", err)
+					return
+				}
+				volume += cl.Config.Volume.Percent
+				if volume < 0 {
+					volume = 0
+				} else if volume > 100 {
+					volume = 100
+				}
+			}
+			err = client.ClientSetVolume(clientId, volume)
 			printOrError(fmt.Sprintf("Volume set to %d%%", volume), err)
 		case "name":
 			name := os.Args[4]
