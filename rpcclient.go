@@ -12,16 +12,18 @@ const (
 )
 
 type rpcClient struct {
-	url     string
-	port    int
-	verbose bool
+	url       string
+	port      int
+	verbose   bool
+	clientIds map[string]string
 }
 
 func newRpcClient(url string, port int, verbose bool) *rpcClient {
 	return &rpcClient{
-		url:     url,
-		port:    port,
-		verbose: verbose,
+		url:       url,
+		port:      port,
+		verbose:   verbose,
+		clientIds: make(map[string]string),
 	}
 }
 
@@ -31,7 +33,7 @@ func (c *rpcClient) ClientGetStatus(id string) (*client, error) {
 		Jsonrpc: version,
 		Method:  "Client.GetStatus",
 		Params: idOnly{
-			Id: id,
+			Id: c.resolveClientId(id),
 		},
 	}
 	response, err := c.sendRequest(request)
@@ -49,7 +51,7 @@ func (c *rpcClient) ClientSetVolume(id string, vol int) error {
 		Jsonrpc: version,
 		Method:  "Client.SetVolume",
 		Params: volumeRequest{
-			Id: id,
+			Id: c.resolveClientId(id),
 			Volume: volume{
 				Percent: vol,
 			},
@@ -65,7 +67,7 @@ func (c *rpcClient) ClientSetName(id string, name string) error {
 		Jsonrpc: version,
 		Method:  "Client.SetName",
 		Params: nameRequest{
-			Id:   id,
+			Id:   c.resolveClientId(id),
 			Name: name,
 		},
 	}
@@ -79,7 +81,7 @@ func (c *rpcClient) SetClientLatency(id string, latency int) error {
 		Jsonrpc: version,
 		Method:  "Client.SetLatency",
 		Params: latencyRequest{
-			Id:      id,
+			Id:      c.resolveClientId(id),
 			Latency: latency,
 		},
 	}
@@ -96,7 +98,7 @@ func (c *rpcClient) ServerGetStatus() *server {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("%s: %v\n", err.Error(), response)
 		return nil
 	}
 
@@ -125,7 +127,7 @@ func (c *rpcClient) ServerDeleteClient(id string) error {
 		Jsonrpc: version,
 		Method:  "Server.DeleteClient",
 		Params: idOnly{
-			Id: id,
+			Id: c.resolveClientId(id),
 		},
 	}
 	_, err := c.sendRequest(request)
@@ -223,4 +225,26 @@ func (c *rpcClient) log(s string) {
 	if c.verbose {
 		fmt.Println(s)
 	}
+}
+
+func (c *rpcClient) resolveClientId(name string) string {
+
+	if c.clientIds[name] != "" {
+		return c.clientIds[name]
+	}
+
+	svr := c.ServerGetStatus()
+	if svr != nil && svr.Groups != nil {
+		for _, grp := range svr.Groups {
+			for _, client := range grp.Clients {
+				if client.Config.Name == name || client.Host.Name == name || client.Id == name {
+					c.clientIds[name] = client.Id
+					return client.Id
+				}
+			}
+		}
+	}
+
+	return name
+
 }
