@@ -151,7 +151,7 @@ func main() {
 			/* TODO: Implement */
 		}
 	case "version":
-		fmt.Println("snapcontrol version " + appVersion)
+		fmt.Println("snapcontrol version " + AppVersion)
 	default:
 		fmt.Println("Usage: snapcontrol <client|group|server|stream> <command> [args]")
 		fmt.Println("Use 'snapcontrol help' for more information")
