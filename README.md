@@ -4,35 +4,25 @@ Snapcontrol is a little CLI tool to control snapserver. It aims to be a full imp
 
 ## Usage
 Note: `<id>` for clients and groups can be found in the output of `server status`
-```
-Commands:
-client status <id>
-	Show status of a specific client
 
-client volume <id> <volume>
-	Set volume of a specific client
+### Commands:
 
-client name <id> <name>
-	Change name of a specific client
-
-client latency <id> <latency>
-	Set latency of a specific client
-
-group status <id>
-group mute <id> <true|false>
-group clients <id>
-group name <id> <name>
-
-server status
-	Show all groups and clients
-server version
-	Show RPC version of server
-server deleteclient <id>
-
-stream addstream <id>
-stream removestream <id>
-stream control <id> <play|pause|stop
-```
+| Command                                               | Description                      |
+|-------------------------------------------------------|----------------------------------|
+| `snapcontrol client status <id\|name>`                | Show status of a specific client |
+| `snapcontrol client volume <id\|name> <volume>` 	     | Set volume of a specific client  |
+| `snapcontrol client name <id\|name> <name>`	          | Change name of a specific client |
+| `snapcontrol client latency <id\|name> <latency>`	    | Set latency of a specific client |
+| `snapcontrol group status <id>`                       | Show status of aspecific group   |
+| `snapcontrol group mute <id> <true\|false>`           | Mute a specific group            |
+| `snapcontrol group clients <id>`                      | Show clients of a specific group |
+| `snapcontrol group name <id> <name>`                  | Change name of a specific group  |
+| `snapcontrol server status`	                          | Show all groups and clients      |
+| `snapcontrol server version`                          | 	Show RPC version of server      |
+| `snapcontrol server deleteclient <id>`                |                                  |
+| `snapcontrol stream addstream <id>`                   |                                  |
+| `snapcontrol stream removestream <id>`                |                                  |
+| `snapcontrol stream control <id> <play\|pause\|stop>` |                                  |
 
 ## Installation
 ### Download .deb packages (Version 0.4.2)
