@@ -15,7 +15,7 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: snapcontrol <client|group|server|stream> <command> [args]")
+		fmt.Println("Usage: snapcontrol <client|group|server> <command> [args]")
 		fmt.Println("Use 'snapcontrol help' for more information")
 		return
 	}
@@ -79,7 +79,7 @@ func main() {
 			fmt.Println("Usage: snapcontrol client <status|volume|name|latency> <clientId> [<value>]")
 		}
 	case "group":
-		if len(os.Args) < 3 {
+		if len(os.Args) < 4 {
 			fmt.Println("Usage: snapcontrol group <status|mute|streams|clients|name> <groupId>")
 			return
 		}
@@ -88,6 +88,10 @@ func main() {
 		switch command {
 		case "status":
 			group := client.GroupGetStatus(groupId)
+			if group == nil {
+				fmt.Printf("Group %s not found\n", groupId)
+				return
+			}
 			fmt.Printf("\t%-36s %-16s %-16s %-9s %-12s\n", "Id", "Name", "Host", "Volume", "Latency")
 			for _, client := range group.Clients {
 				fmt.Printf("\t%-36s %-16s %-16s %5d%% %8dms\n", client.Id, client.Config.Name, client.Host.Name, client.Config.Volume.Percent, client.Config.Latency)
@@ -136,20 +140,6 @@ func main() {
 		default:
 			fmt.Println("Usage: snapcontrol server <status|version|deleteclient> [args]")
 		}
-	case "stream":
-		if len(os.Args) < 2 {
-			fmt.Println("Usage: snapcontrol stream <addstream|removestream|control> <streamId>")
-			return
-		}
-		command := strings.ToLower(os.Args[2])
-		switch command {
-		case "addstream":
-			/* TODO: Implement */
-		case "removestream":
-			/* TODO: Implement */
-		case "control":
-			/* TODO: Implement */
-		}
 	case "version":
 		fmt.Println("snapcontrol version " + AppVersion)
 	default:
@@ -192,8 +182,4 @@ func printHelp() {
 	fmt.Println("server version")
 	fmt.Println("\tShow RPC version of server")
 	fmt.Println("server deleteclient <id>")
-	fmt.Println()
-	fmt.Println("stream addstream <id>")
-	fmt.Println("stream removestream <id>")
-	fmt.Println("stream control <id> <play|pause|stop>")
 }

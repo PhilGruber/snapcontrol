@@ -145,7 +145,6 @@ func (c *rpcClient) GroupGetStatus(id string) *group {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 
@@ -214,6 +213,9 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 	}
 
 	if response.Error != nil {
+		if response.Error.Data == nil {
+			response.Error.Data = ""
+		}
 		return nil, errors.New(response.Error.Message + ": " + response.Error.Data.(string))
 	}
 
