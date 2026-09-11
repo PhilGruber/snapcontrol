@@ -10,9 +10,16 @@ import (
 )
 
 func main() {
+	success := false
+	defer func() {
+		if !success {
+			os.Exit(1)
+		}
+	}()
 
 	if len(os.Args) > 1 && os.Args[1] == "help" {
 		printHelp()
+		success = true
 		return
 	}
 
@@ -81,7 +88,9 @@ func main() {
 				}
 			}
 			err = client.ClientSetVolume(clientId, volume)
-			printOrError(fmt.Sprintf("Volume set to %d%%", volume), err)
+			if !printOrError(fmt.Sprintf("Volume set to %d%%", volume), err) {
+				return
+			}
 		case "name":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol client name <clientId> <name>")
@@ -89,7 +98,9 @@ func main() {
 			}
 			name := os.Args[4]
 			err := client.ClientSetName(clientId, name)
-			printOrError(fmt.Sprintf("Name set to %s\n", name), err)
+			if !printOrError(fmt.Sprintf("Name set to %s\n", name), err) {
+				return
+			}
 		case "latency":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol client latency <clientId> <latency>")
@@ -101,9 +112,12 @@ func main() {
 				return
 			}
 			err = client.SetClientLatency(clientId, latency)
-			printOrError(fmt.Sprintf("Latency set to %d\n", latency), err)
+			if !printOrError(fmt.Sprintf("Latency set to %d\n", latency), err) {
+				return
+			}
 		default:
 			fmt.Println("Usage: snapcontrol client <status|volume|name|latency> <clientId> [<value>]")
+			return
 		}
 	case "group":
 		if len(os.Args) < 4 {
@@ -134,30 +148,39 @@ func main() {
 				return
 			}
 			err = client.SetGroupMute(groupId, mute)
-			printOrError("Mute set", err)
+			if !printOrError("Mute set", err) {
+				return
+			}
 		case "clients":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol group clients <groupId> <clientId|name>...")
 				return
 			}
 			_, err := client.SetGroupClients(groupId, os.Args[4:])
-			printOrError("Group clients set", err)
+			if !printOrError("Group clients set", err) {
+				return
+			}
 		case "stream":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol group stream <groupId> <streamId>")
 				return
 			}
 			err := client.SetGroupStream(groupId, os.Args[4])
-			printOrError("Group stream set", err)
+			if !printOrError("Group stream set", err) {
+				return
+			}
 		case "name":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol group name <groupId> <name>")
 				return
 			}
 			err := client.SetGroupName(groupId, os.Args[4])
-			printOrError("Name set", err)
+			if !printOrError("Name set", err) {
+				return
+			}
 		default:
 			fmt.Println("Usage: snapcontrol group <status|mute|stream|clients|name> <groupId>")
+			return
 		}
 	case "server":
 		if len(os.Args) < 3 {
@@ -199,9 +222,12 @@ func main() {
 				return
 			}
 			err := client.ServerDeleteClient(os.Args[3])
-			printOrError("Client deleted", err)
+			if !printOrError("Client deleted", err) {
+				return
+			}
 		default:
 			fmt.Println("Usage: snapcontrol server <status|version|deleteclient> [args]")
+			return
 		}
 	case "stream":
 		if len(os.Args) < 3 {
@@ -221,14 +247,18 @@ func main() {
 				return
 			}
 			id, err := client.StreamAdd(os.Args[3])
-			printOrError(fmt.Sprintf("Stream added: %s", id), err)
+			if !printOrError(fmt.Sprintf("Stream added: %s", id), err) {
+				return
+			}
 		case "remove", "removestream":
 			if len(os.Args) < 4 {
 				fmt.Println("Usage: snapcontrol stream remove <streamId>")
 				return
 			}
 			id, err := client.StreamRemove(os.Args[3])
-			printOrError(fmt.Sprintf("Stream removed: %s", id), err)
+			if !printOrError(fmt.Sprintf("Stream removed: %s", id), err) {
+				return
+			}
 		case "control":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol stream control <streamId> <command> [key=value ...]")
@@ -240,7 +270,9 @@ func main() {
 				return
 			}
 			err = client.StreamControl(os.Args[3], os.Args[4], params)
-			printOrError("Stream command sent", err)
+			if !printOrError("Stream command sent", err) {
+				return
+			}
 		case "property", "setproperty":
 			if len(os.Args) < 6 {
 				fmt.Println("Usage: snapcontrol stream property <streamId> <property> <jsonValue>")
@@ -252,16 +284,21 @@ func main() {
 				return
 			}
 			err = client.StreamSetProperty(os.Args[3], os.Args[4], value)
-			printOrError("Stream property set", err)
+			if !printOrError("Stream property set", err) {
+				return
+			}
 		default:
 			fmt.Println("Usage: snapcontrol stream <add|remove|control|property> [args]")
+			return
 		}
 	case "version":
 		fmt.Println("snapcontrol version " + AppVersion)
 	default:
 		fmt.Println("Usage: snapcontrol <client|group|server|stream> <command> [args]")
 		fmt.Println("Use 'snapcontrol help' for more information")
+		return
 	}
+	success = true
 }
 
 func parseParameters(args []string) (map[string]any, error) {
@@ -292,11 +329,13 @@ func parseRequiredJSONValue(value string) (any, error) {
 	return parsed, nil
 }
 
-func printOrError(msg string, err error) {
+func printOrError(msg string, err error) bool {
 	if err != nil {
 		fmt.Println(err)
+		return false
 	} else {
 		fmt.Println(msg)
+		return true
 	}
 }
 

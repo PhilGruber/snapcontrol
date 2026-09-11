@@ -1,6 +1,9 @@
 package main
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 type request struct {
 	Id      int    `json:"id"`
@@ -27,6 +30,7 @@ type rpcError struct {
 }
 
 type result struct {
+	raw      json.RawMessage
 	Client   *client `json:"client"`
 	Server   *server `json:"server"`
 	Group    *group  `json:"group"`
@@ -39,11 +43,20 @@ type result struct {
 // UnmarshalJSON accepts both the object results used by status requests and
 // the scalar "ok" result returned by stream control/property requests.
 func (r *result) UnmarshalJSON(data []byte) error {
-	if len(data) == 0 || data[0] != '{' {
+	r.raw = append(r.raw[:0], data...)
+	if !r.isObject() {
 		return nil
 	}
 	type resultAlias result
 	return json.Unmarshal(data, (*resultAlias)(r))
+}
+
+func (r result) isObject() bool {
+	return len(bytes.TrimSpace(r.raw)) > 0 && bytes.TrimSpace(r.raw)[0] == '{'
+}
+
+func (r result) isOK() bool {
+	return bytes.Equal(bytes.TrimSpace(r.raw), []byte(`"ok"`))
 }
 
 type client struct {

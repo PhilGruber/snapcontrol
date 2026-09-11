@@ -22,7 +22,7 @@ func TestAdditionalAPICalls(t *testing.T) {
 			c.clientIds["kitchen"] = "client-1"
 			_, err := c.SetGroupClients("group-1", []string{"kitchen"})
 			return err
-		}, "Group.SetClients", map[string]any{"id": "group-1", "clients": []any{"client-1"}}, `{}`},
+		}, "Group.SetClients", map[string]any{"id": "group-1", "clients": []any{"client-1"}}, `{"server":{"groups":[]}}`},
 		{"control stream", func(c *rpcClient) error { return c.StreamControl("stream-1", "seek", map[string]any{"offset": 60}) }, "Stream.Control", map[string]any{"id": "stream-1", "command": "seek", "params": map[string]any{"offset": float64(60)}}, `"ok"`},
 		{"set stream property", func(c *rpcClient) error { return c.StreamSetProperty("stream-1", "shuffle", true) }, "Stream.SetProperty", map[string]any{"id": "stream-1", "property": "shuffle", "value": true}, `"ok"`},
 		{"add stream", func(c *rpcClient) error { _, err := c.StreamAdd("pipe:///tmp/snapfifo"); return err }, "Stream.AddStream", map[string]any{"streamUri": "pipe:///tmp/snapfifo"}, `{"stream_id":"stream-1"}`},

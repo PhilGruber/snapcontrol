@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"time"
 )
 
 const (
-	version = "2.0"
+	version         = "2.0"
+	maxResponseSize = 4 << 20
 )
 
 type rpcClient struct {
@@ -50,19 +52,27 @@ func (c *rpcClient) ClientGetStatus(id string) (*client, error) {
 }
 
 func (c *rpcClient) ClientSetVolume(id string, vol int) error {
+	client, err := c.ClientGetStatus(id)
+	if err != nil {
+		return err
+	}
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Client.SetVolume",
 		Params: volumeRequest{
-			Id: c.resolveClientId(id),
+			Id: client.Id,
 			Volume: volume{
+				Muted:   client.Config.Volume.Muted,
 				Percent: vol,
 			},
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Client.SetVolume")
 }
 
 func (c *rpcClient) ClientSetName(id string, name string) error {
@@ -75,8 +85,11 @@ func (c *rpcClient) ClientSetName(id string, name string) error {
 			Name: name,
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Client.SetName")
 }
 
 func (c *rpcClient) SetClientLatency(id string, latency int) error {
@@ -89,8 +102,11 @@ func (c *rpcClient) SetClientLatency(id string, latency int) error {
 			Latency: latency,
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Client.SetLatency")
 }
 
 func (c *rpcClient) ServerGetStatus() (*server, error) {
@@ -121,6 +137,9 @@ func (c *rpcClient) ServerGetRPCVersion() (string, error) {
 		return "", err
 	}
 
+	if err := requireObjectResult(response.Result, "Server.GetRPCVersion"); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("%d.%d.%d", response.Result.Major, response.Result.Minor, response.Result.Patch), nil
 }
 
@@ -133,8 +152,11 @@ func (c *rpcClient) ServerDeleteClient(id string) error {
 			Id: c.resolveClientId(id),
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Server.DeleteClient")
 }
 
 func (c *rpcClient) GroupGetStatus(id string) (*group, error) {
@@ -166,8 +188,11 @@ func (c *rpcClient) SetGroupMute(id string, mute bool) error {
 			Mute: mute,
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Group.SetMute")
 }
 
 func (c *rpcClient) SetGroupName(id string, name string) error {
@@ -180,12 +205,15 @@ func (c *rpcClient) SetGroupName(id string, name string) error {
 			Name: name,
 		},
 	}
-	_, err := c.sendRequest(request)
-	return err
+	response, err := c.sendRequest(request)
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Group.SetName")
 }
 
 func (c *rpcClient) SetGroupStream(id string, streamID string) error {
-	_, err := c.sendRequest(request{
+	response, err := c.sendRequest(request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Group.SetStream",
@@ -194,7 +222,10 @@ func (c *rpcClient) SetGroupStream(id string, streamID string) error {
 			StreamID: streamID,
 		},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return requireObjectResult(response.Result, "Group.SetStream")
 }
 
 func (c *rpcClient) SetGroupClients(id string, clientIDs []string) (*server, error) {
@@ -214,27 +245,42 @@ func (c *rpcClient) SetGroupClients(id string, clientIDs []string) (*server, err
 	if err != nil {
 		return nil, err
 	}
+	if response.Result.Server == nil {
+		return nil, errors.New("invalid Group.SetClients response: missing server status")
+	}
 	return response.Result.Server, nil
 }
 
 func (c *rpcClient) StreamControl(id string, command string, params map[string]any) error {
-	_, err := c.sendRequest(request{
+	response, err := c.sendRequest(request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Stream.Control",
 		Params:  streamControlRequest{Id: id, Command: command, Params: params},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if !response.Result.isOK() {
+		return errors.New("invalid Stream.Control response: expected result \"ok\"")
+	}
+	return nil
 }
 
 func (c *rpcClient) StreamSetProperty(id string, property string, value any) error {
-	_, err := c.sendRequest(request{
+	response, err := c.sendRequest(request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Stream.SetProperty",
 		Params:  streamPropertyRequest{Id: id, Property: property, Value: value},
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if !response.Result.isOK() {
+		return errors.New("invalid Stream.SetProperty response: expected result \"ok\"")
+	}
+	return nil
 }
 
 func (c *rpcClient) StreamAdd(streamURI string) (string, error) {
@@ -246,6 +292,9 @@ func (c *rpcClient) StreamAdd(streamURI string) (string, error) {
 	})
 	if err != nil {
 		return "", err
+	}
+	if response.Result.StreamID == "" {
+		return "", errors.New("invalid Stream.AddStream response: missing stream_id")
 	}
 	return response.Result.StreamID, nil
 }
@@ -259,6 +308,9 @@ func (c *rpcClient) StreamRemove(id string) (string, error) {
 	})
 	if err != nil {
 		return "", err
+	}
+	if response.Result.StreamID == "" {
+		return "", errors.New("invalid Stream.RemoveStream response: missing stream_id")
 	}
 	return response.Result.StreamID, nil
 }
@@ -286,20 +338,17 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 		return nil, fmt.Errorf("send request to Snapcast: %w", err)
 	}
 
-	buf := make([]byte, 10240)
-	length, err := conn.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("read response from Snapcast: %w", err)
-	}
-
-	buf = buf[:length]
-
-	c.log(fmt.Sprintf("Response: %s\n", string(buf)))
-
 	var response response
-	err = json.Unmarshal(buf, &response)
+	decoder := json.NewDecoder(io.LimitReader(conn, maxResponseSize))
+	err = decoder.Decode(&response)
 	if err != nil {
 		return nil, fmt.Errorf("decode Snapcast response: %w", err)
+	}
+	if response.Jsonrpc != version {
+		return nil, fmt.Errorf("invalid Snapcast response: jsonrpc = %q", response.Jsonrpc)
+	}
+	if response.Id != request.Id {
+		return nil, fmt.Errorf("invalid Snapcast response: id = %d, want %d", response.Id, request.Id)
 	}
 
 	if response.Error != nil {
@@ -311,6 +360,13 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 
 	c.log(fmt.Sprintf("Result: %+v\n", response.Result))
 	return &response, nil
+}
+
+func requireObjectResult(result result, method string) error {
+	if !result.isObject() {
+		return fmt.Errorf("invalid %s response: expected an object result", method)
+	}
+	return nil
 }
 
 func (c *rpcClient) log(s string) {
