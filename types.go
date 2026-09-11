@@ -1,5 +1,7 @@
 package main
 
+import "encoding/json"
+
 type request struct {
 	Id      int    `json:"id"`
 	Jsonrpc string `json:"jsonrpc"`
@@ -25,12 +27,23 @@ type rpcError struct {
 }
 
 type result struct {
-	Client *client `json:"client"`
-	Server *server `json:"server"`
-	Group  *group  `json:"group"`
-	Minor  int     `json:"minor"`
-	Major  int     `json:"major"`
-	Patch  int     `json:"patch"`
+	Client   *client `json:"client"`
+	Server   *server `json:"server"`
+	Group    *group  `json:"group"`
+	StreamID string  `json:"stream_id"`
+	Minor    int     `json:"minor"`
+	Major    int     `json:"major"`
+	Patch    int     `json:"patch"`
+}
+
+// UnmarshalJSON accepts both the object results used by status requests and
+// the scalar "ok" result returned by stream control/property requests.
+func (r *result) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || data[0] != '{' {
+		return nil
+	}
+	type resultAlias result
+	return json.Unmarshal(data, (*resultAlias)(r))
 }
 
 type client struct {
@@ -78,6 +91,32 @@ type volume struct {
 type muteRequest struct {
 	Id   string `json:"id"`
 	Mute bool   `json:"mute"`
+}
+
+type groupStreamRequest struct {
+	Id       string `json:"id"`
+	StreamID string `json:"stream_id"`
+}
+
+type groupClientsRequest struct {
+	Id      string   `json:"id"`
+	Clients []string `json:"clients"`
+}
+
+type streamControlRequest struct {
+	Id      string         `json:"id"`
+	Command string         `json:"command"`
+	Params  map[string]any `json:"params,omitempty"`
+}
+
+type streamPropertyRequest struct {
+	Id       string `json:"id"`
+	Property string `json:"property"`
+	Value    any    `json:"value"`
+}
+
+type streamURIRequest struct {
+	StreamURI string `json:"streamUri"`
 }
 
 type server struct {

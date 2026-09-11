@@ -179,11 +179,90 @@ func (c *rpcClient) SetGroupName(id string, name string) error {
 	return err
 }
 
+func (c *rpcClient) SetGroupStream(id string, streamID string) error {
+	_, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Group.SetStream",
+		Params: groupStreamRequest{
+			Id:       id,
+			StreamID: streamID,
+		},
+	})
+	return err
+}
+
+func (c *rpcClient) SetGroupClients(id string, clientIDs []string) (*server, error) {
+	resolvedIDs := make([]string, len(clientIDs))
+	for i, clientID := range clientIDs {
+		resolvedIDs[i] = c.resolveClientId(clientID)
+	}
+	response, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Group.SetClients",
+		Params: groupClientsRequest{
+			Id:      id,
+			Clients: resolvedIDs,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response.Result.Server, nil
+}
+
+func (c *rpcClient) StreamControl(id string, command string, params map[string]any) error {
+	_, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Stream.Control",
+		Params:  streamControlRequest{Id: id, Command: command, Params: params},
+	})
+	return err
+}
+
+func (c *rpcClient) StreamSetProperty(id string, property string, value any) error {
+	_, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Stream.SetProperty",
+		Params:  streamPropertyRequest{Id: id, Property: property, Value: value},
+	})
+	return err
+}
+
+func (c *rpcClient) StreamAdd(streamURI string) (string, error) {
+	response, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Stream.AddStream",
+		Params:  streamURIRequest{StreamURI: streamURI},
+	})
+	if err != nil {
+		return "", err
+	}
+	return response.Result.StreamID, nil
+}
+
+func (c *rpcClient) StreamRemove(id string) (string, error) {
+	response, err := c.sendRequest(request{
+		Id:      1,
+		Jsonrpc: version,
+		Method:  "Stream.RemoveStream",
+		Params:  idOnly{Id: id},
+	})
+	if err != nil {
+		return "", err
+	}
+	return response.Result.StreamID, nil
+}
+
 func (c *rpcClient) sendRequest(request request) (*response, error) {
 	c.log(fmt.Sprintf("Connecting to %s:%d\n", c.url, c.port))
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.url, c.port))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer conn.Close()
 
@@ -192,13 +271,13 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 	c.log(fmt.Sprintf("Sending request: %s\n", string(data)))
 	_, err = conn.Write(data)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	buf := make([]byte, 10240)
 	length, err := conn.Read(buf)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	buf = buf[:length]
@@ -214,12 +293,12 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 
 	if response.Error != nil {
 		if response.Error.Data == nil {
-			response.Error.Data = ""
+			return nil, errors.New(response.Error.Message)
 		}
-		return nil, errors.New(response.Error.Message + ": " + response.Error.Data.(string))
+		return nil, fmt.Errorf("%s: %v", response.Error.Message, response.Error.Data)
 	}
 
-	c.log(fmt.Sprintf("Result: %s\n", response.Result))
+	c.log(fmt.Sprintf("Result: %+v\n", response.Result))
 	return &response, nil
 }
 

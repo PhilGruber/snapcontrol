@@ -15,14 +15,16 @@ Note: `<id>` for clients and groups can be found in the output of `server status
 | `snapcontrol client latency <id\|name> <latency>`	    | Set latency of a specific client |
 | `snapcontrol group status <id>`                       | Show status of aspecific group   |
 | `snapcontrol group mute <id> <true\|false>`           | Mute a specific group            |
-| `snapcontrol group clients <id>`                      | Show clients of a specific group |
+| `snapcontrol group stream <id> <streamId>`            | Assign a stream to a group       |
+| `snapcontrol group clients <id> <clientId\|name>...`  | Replace a group's clients         |
 | `snapcontrol group name <id> <name>`                  | Change name of a specific group  |
 | `snapcontrol server status`	                          | Show all groups and clients      |
 | `snapcontrol server version`                          | 	Show RPC version of server      |
 | `snapcontrol server deleteclient <id>`                |                                  |
-| `snapcontrol stream addstream <id>`                   |                                  |
-| `snapcontrol stream removestream <id>`                |                                  |
-| `snapcontrol stream control <id> <play\|pause\|stop>` |                                  |
+| `snapcontrol stream add <streamUri>`                  | Add a stream                      |
+| `snapcontrol stream remove <id>`                      | Remove a stream                   |
+| `snapcontrol stream control <id> <command> [key=value ...]` | Control a stream           |
+| `snapcontrol stream property <id> <property> <jsonValue>` | Set a stream property          |
 
 ## Installation
 ### Download .deb packages (Version 0.4.2)
