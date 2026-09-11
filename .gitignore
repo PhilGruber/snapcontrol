@@ -26,3 +26,8 @@ go.work.sum
 
 .idea
 snapcontrol
+
+deb.control
+
+.version
+bump-version-and-push-to-repo.zsh
