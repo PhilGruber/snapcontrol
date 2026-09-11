@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 )
 
 const (
@@ -41,6 +42,9 @@ func (c *rpcClient) ClientGetStatus(id string) (*client, error) {
 		return nil, err
 	}
 
+	if response.Result.Client == nil {
+		return nil, errors.New("invalid response: missing client status")
+	}
 	c.log(fmt.Sprintf("Client %s status: %s\n", id, response.Result.Client.Config.Name))
 	return response.Result.Client, nil
 }
@@ -89,7 +93,7 @@ func (c *rpcClient) SetClientLatency(id string, latency int) error {
 	return err
 }
 
-func (c *rpcClient) ServerGetStatus() *server {
+func (c *rpcClient) ServerGetStatus() (*server, error) {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
@@ -98,27 +102,26 @@ func (c *rpcClient) ServerGetStatus() *server {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		fmt.Printf("%s: %v\n", err.Error(), response)
-		return nil
+		return nil, err
 	}
-
-	return response.Result.Server
+	if response.Result.Server == nil {
+		return nil, errors.New("invalid response: missing server status")
+	}
+	return response.Result.Server, nil
 }
 
-func (c *rpcClient) ServerGetRPCVersion() string {
+func (c *rpcClient) ServerGetRPCVersion() (string, error) {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
 		Method:  "Server.GetRPCVersion",
 	}
 	response, err := c.sendRequest(request)
-	fmt.Printf("Response: %v\n", response)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return "", err
 	}
 
-	return fmt.Sprintf("%d.%d.%d", response.Result.Major, response.Result.Minor, response.Result.Patch)
+	return fmt.Sprintf("%d.%d.%d", response.Result.Major, response.Result.Minor, response.Result.Patch), nil
 }
 
 func (c *rpcClient) ServerDeleteClient(id string) error {
@@ -134,7 +137,7 @@ func (c *rpcClient) ServerDeleteClient(id string) error {
 	return err
 }
 
-func (c *rpcClient) GroupGetStatus(id string) *group {
+func (c *rpcClient) GroupGetStatus(id string) (*group, error) {
 	request := request{
 		Id:      1,
 		Jsonrpc: version,
@@ -145,10 +148,12 @@ func (c *rpcClient) GroupGetStatus(id string) *group {
 	}
 	response, err := c.sendRequest(request)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-
-	return response.Result.Group
+	if response.Result.Group == nil {
+		return nil, errors.New("invalid response: missing group status")
+	}
+	return response.Result.Group, nil
 }
 
 func (c *rpcClient) SetGroupMute(id string, mute bool) error {
@@ -260,24 +265,31 @@ func (c *rpcClient) StreamRemove(id string) (string, error) {
 
 func (c *rpcClient) sendRequest(request request) (*response, error) {
 	c.log(fmt.Sprintf("Connecting to %s:%d\n", c.url, c.port))
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.url, c.port))
+	address := fmt.Sprintf("%s:%d", c.url, c.port)
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connect to Snapcast at %s: %w", address, err)
 	}
 	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		return nil, fmt.Errorf("set request deadline: %w", err)
+	}
 
-	data, _ := json.Marshal(request)
+	data, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("encode request: %w", err)
+	}
 	data = append(data, '\n')
 	c.log(fmt.Sprintf("Sending request: %s\n", string(data)))
 	_, err = conn.Write(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("send request to Snapcast: %w", err)
 	}
 
 	buf := make([]byte, 10240)
 	length, err := conn.Read(buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read response from Snapcast: %w", err)
 	}
 
 	buf = buf[:length]
@@ -287,8 +299,7 @@ func (c *rpcClient) sendRequest(request request) (*response, error) {
 	var response response
 	err = json.Unmarshal(buf, &response)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return nil, fmt.Errorf("decode Snapcast response: %w", err)
 	}
 
 	if response.Error != nil {
@@ -314,8 +325,8 @@ func (c *rpcClient) resolveClientId(name string) string {
 		return c.clientIds[name]
 	}
 
-	svr := c.ServerGetStatus()
-	if svr != nil && svr.Groups != nil {
+	svr, err := c.ServerGetStatus()
+	if err == nil && svr.Groups != nil {
 		for _, grp := range svr.Groups {
 			for _, client := range grp.Clients {
 				if client.Config.Name == name || client.Host.Name == name || client.Id == name {

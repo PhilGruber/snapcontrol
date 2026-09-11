@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -41,7 +42,11 @@ func main() {
 		switch command {
 		case "status":
 			cl, err := client.ClientGetStatus(clientId)
-			printOrError(fmt.Sprintf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent), err)
+			if err != nil {
+				printOrError("", err)
+				return
+			}
+			fmt.Printf("Client %s: %s. Volume: %d%%\n", cl.Id, cl.Config.Name, cl.Config.Volume.Percent)
 		case "volume":
 			if len(os.Args) < 5 {
 				fmt.Println("Usage: snapcontrol client volume <clientId> <volume>")
@@ -60,6 +65,7 @@ func main() {
 			}
 			if !relative && (volume < 0 || volume > 100) {
 				fmt.Println("Volume must be between 0 and 100")
+				return
 			}
 			if relative {
 				cl, err := client.ClientGetStatus(clientId)
@@ -108,9 +114,9 @@ func main() {
 		groupId := os.Args[3]
 		switch command {
 		case "status":
-			group := client.GroupGetStatus(groupId)
-			if group == nil {
-				fmt.Printf("Group %s not found\n", groupId)
+			group, err := client.GroupGetStatus(groupId)
+			if err != nil {
+				printOrError("", err)
 				return
 			}
 			fmt.Printf("\t%-36s %-16s %-16s %-9s %-12s\n", "Id", "Name", "Host", "Volume", "Latency")
@@ -122,7 +128,12 @@ func main() {
 				fmt.Println("Usage: snapcontrol group mute <groupId> <true|false>")
 				return
 			}
-			err := client.SetGroupMute(groupId, os.Args[4] == "true")
+			mute, err := strconv.ParseBool(os.Args[4])
+			if err != nil {
+				fmt.Println("Mute must be true or false")
+				return
+			}
+			err = client.SetGroupMute(groupId, mute)
 			printOrError("Mute set", err)
 		case "clients":
 			if len(os.Args) < 5 {
@@ -156,7 +167,11 @@ func main() {
 		command := strings.ToLower(os.Args[2])
 		switch command {
 		case "status":
-			svr := client.ServerGetStatus()
+			svr, err := client.ServerGetStatus()
+			if err != nil {
+				printOrError("", err)
+				return
+			}
 			for _, group := range svr.Groups {
 				name := group.Name
 				if name == "" {
@@ -172,7 +187,11 @@ func main() {
 				fmt.Printf("Stream %s: %s (%s)\n", stream.Id, stream.Status, stream.Uri.Scheme)
 			}
 		case "version":
-			version := client.ServerGetRPCVersion()
+			version, err := client.ServerGetRPCVersion()
+			if err != nil {
+				printOrError("", err)
+				return
+			}
 			fmt.Println("Server version: ", version)
 		case "deleteclient":
 			if len(os.Args) < 4 {
@@ -194,6 +213,11 @@ func main() {
 		case "add", "addstream":
 			if len(os.Args) < 4 {
 				fmt.Println("Usage: snapcontrol stream add <streamUri>")
+				return
+			}
+			streamURI, err := url.Parse(os.Args[3])
+			if err != nil || streamURI.Scheme == "" {
+				fmt.Println("Invalid stream URI: a URI with a scheme is required")
 				return
 			}
 			id, err := client.StreamAdd(os.Args[3])
@@ -222,8 +246,12 @@ func main() {
 				fmt.Println("Usage: snapcontrol stream property <streamId> <property> <jsonValue>")
 				return
 			}
-			value := parseJSONValue(os.Args[5])
-			err := client.StreamSetProperty(os.Args[3], os.Args[4], value)
+			value, err := parseRequiredJSONValue(os.Args[5])
+			if err != nil {
+				fmt.Println("Invalid property value:", err)
+				return
+			}
+			err = client.StreamSetProperty(os.Args[3], os.Args[4], value)
 			printOrError("Stream property set", err)
 		default:
 			fmt.Println("Usage: snapcontrol stream <add|remove|control|property> [args]")
@@ -254,6 +282,14 @@ func parseJSONValue(value string) any {
 		return parsed
 	}
 	return value
+}
+
+func parseRequiredJSONValue(value string) (any, error) {
+	var parsed any
+	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
+		return nil, fmt.Errorf("must be valid JSON (quote string values): %w", err)
+	}
+	return parsed, nil
 }
 
 func printOrError(msg string, err error) {
